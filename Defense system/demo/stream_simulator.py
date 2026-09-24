@@ -8,7 +8,8 @@ transaction-processing system (synchronously in the transaction path,
 or via a Kafka consumer) - this script exists only because that real
 integration doesn't exist in this project. Say so if asked.
 
-Run with the scoring API already running:
+Run with the scoring API already running. SMS delivery is disabled for this
+demo so the sample phone numbers never receive messages:
     python demo/stream_simulator.py
 """
 import time
@@ -380,24 +381,74 @@ DEMO_TRANSACTIONS = [
     "is_airtime_transfer": 0,
     "login_new_device": 1,
     "failed_logins_recent": 3,
-    "minutes_since_login": 1.5,
-    "phone_number": "+254700009999",
-    "txn_id": "SHAP-DEMO-001",},
+        "minutes_since_login": 1.5,
+        "phone_number": "+254700009999",
+        "txn_id": "SHAP-DEMO-001",
+        "label": "SHAP explanation sample - extreme cash-out",
+    },
+    {
+        "label": "Ring-linked payout - high risk, awaiting subscriber",
+        "amount": 541.853, "orig_balance_delta": 71.879,
+        "dest_balance_delta": 343.388, "drain_ratio": 1.351,
+        "hour_of_day": 11, "dest_is_merchant": 0, "txn_velocity": 3,
+        "device_changed_recently": 0, "days_since_last_sim_activity": 3.64,
+        "geo_jump_km": 137.265, "receipient_fan_in": 11,
+        "device_cluster_ratio": 1, "in_flagged_ring": 1,
+        "receipient_is_new": 1, "transfer_burst_count": 4,
+        "is_airtime_transfer": 1, "login_new_device": 0,
+        "failed_logins_recent": 5, "minutes_since_login": 19.534,
+        "phone_number": "+254000000031",
+    },
+    {
+        "label": "New recipient and recent session - medium risk",
+        "amount": 3709.273, "orig_balance_delta": 1052.04,
+        "dest_balance_delta": 3453.689, "drain_ratio": 1.029,
+        "hour_of_day": 14, "dest_is_merchant": 0, "txn_velocity": 2,
+        "device_changed_recently": 0, "days_since_last_sim_activity": 1.97,
+        "geo_jump_km": 37.624, "receipient_fan_in": 13,
+        "device_cluster_ratio": 18, "in_flagged_ring": 0,
+        "receipient_is_new": 1, "transfer_burst_count": 4,
+        "is_airtime_transfer": 0, "login_new_device": 1,
+        "failed_logins_recent": 4, "minutes_since_login": 15.048,
+        "phone_number": "+254000000032",
+    },
+    {
+        "label": "High-risk cash-out with no reply - escalation queue demo",
+        "amount": 1790.678, "orig_balance_delta": 2366.625,
+        "dest_balance_delta": -2619.802, "drain_ratio": 1.032,
+        "hour_of_day": 22, "dest_is_merchant": 0, "txn_velocity": 1,
+        "device_changed_recently": 0, "days_since_last_sim_activity": 11.803,
+        "geo_jump_km": 200.638, "receipient_fan_in": 1,
+        "device_cluster_ratio": 4, "in_flagged_ring": 0,
+        "receipient_is_new": 1, "transfer_burst_count": 3,
+        "is_airtime_transfer": 0, "login_new_device": 1,
+        "failed_logins_recent": 0, "minutes_since_login": 15.528,
+        "phone_number": "+254000000033", "escalate_demo": True,
+    },
 ]
 
 
 def run(delay_seconds: float = 2.0):
-    print(f"Sending {len(DEMO_TRANSACTIONS)} demo transactions to {API_URL}\n")
+    print(
+        f"Sending {len(DEMO_TRANSACTIONS)} demo transactions to {API_URL} "
+        "(SMS delivery disabled)\n"
+    )
 
     for scenario in DEMO_TRANSACTIONS:
         # copy so we don't mutate the global list across reruns
         payload = dict(scenario)
-        label = payload.pop("label")
+        label = payload.pop("label", "Unlabeled demo scenario")
+        escalate_demo = payload.pop("escalate_demo", False)
         payload["txn_id"] = str(uuid.uuid4())
 
         print(f"--- {label} ---")
         try:
-            response = requests.post(API_URL, json=payload, timeout=30)
+            response = requests.post(
+                API_URL,
+                json=payload,
+                params={"dry_run": "true", "escalate_demo": str(escalate_demo).lower()},
+                timeout=30,
+            )
             print(response.status_code, response.json())
         except Exception as e:
             print(f"Request failed: {e}")

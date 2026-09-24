@@ -3,7 +3,7 @@ numpy
 networkx
 scipy
 scikit-learn
-xgboost
+xgboost-cpu==3.1.2
 joblib
 shap
 fastapi

@@ -1,0 +1,36 @@
+services:
+  db:
+    image: mysql:8.0
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}   
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./src/db:/docker-entrypoint-initdb.d
+
+  api:
+    build: .
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000" 
+    env_file:
+      - .env  
+    depends_on:
+      - db
+
+  dashboard:
+    build: .
+    command: streamlit run src/app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+          - "8501:8501"
+    env_file:
+          - .env
+    depends_on:
+          - api
+volumes:
+  db_data:
